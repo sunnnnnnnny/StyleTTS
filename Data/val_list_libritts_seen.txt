@@ -1,0 +1,6 @@
+ref_wav/LibriTTS-train-clean-360-sub/5123_34572/5123_34572_000011_000000.wav|something|something
+ref_wav/LibriTTS-train-clean-360-sub/3224_168198/3224_168198_000002_000001.wav|something|something
+ref_wav/LibriTTS-train-clean-360-sub/7342_73961/7342_73961_000018_000006.wav|something|something
+ref_wav/LibriTTS-train-clean-360-sub/3118_5909/3118_5909_000012_000004.wav|something|something
+ref_wav/LibriTTS-train-clean-360-sub/1335_163935/1335_163935_000025_000005.wav|something|something
+ref_wav/LibriTTS-train-clean-360-sub/1571_141320/1571_141320_000039_000000.wav|something|something

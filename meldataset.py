@@ -105,6 +105,7 @@ class FilePathDataset(torch.utils.data.Dataset):
         acoustic_feature = mel_tensor.squeeze()
         length_feature = acoustic_feature.size(1)
         acoustic_feature = acoustic_feature[:, :(length_feature - length_feature % 2)]
+        print(text_tensor.max())
         
         return speaker_id, acoustic_feature, text_tensor, path
 
@@ -198,6 +199,7 @@ def build_dataloader(path_list,
                      dataset_config={}):
     
     dataset = FilePathDataset(path_list, validation=validation, **dataset_config)
+    dataset.__getitem__(0)
     collate_fn = Collater(**collate_config)
     data_loader = DataLoader(dataset,
                              batch_size=batch_size,
