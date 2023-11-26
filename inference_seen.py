@@ -190,44 +190,44 @@ class StyleTTS:
         tokens = self.textcleaner(ps)
         tokens.insert(0, 0)
         tokens.append(0)
-        tokens = torch.LongTensor(tokens).to(self.device).unsqueeze(0)
+        tokens = torch.LongTensor(tokens).to(self.device).unsqueeze(0)  # [1,15]
         converted_samples = {}
-        random_sid = random.randint(0, 5)
+        random_sid = random.randint(0, 5)  # random_sid = 3
         with torch.no_grad():
-            input_lengths = torch.LongTensor([tokens.shape[-1]]).to(self.device)
-            m = self.length_to_mask(input_lengths).to(self.device)
-            t_en = self.model.text_encoder(tokens, input_lengths, m)
-            key = self.keys[random_sid]
-            ref, _ = self.ref_embeddings[key]
-            s = ref.squeeze(1)
+            input_lengths = torch.LongTensor([tokens.shape[-1]]).to(self.device)  # [15]
+            m = self.length_to_mask(input_lengths).to(self.device)  # [1,15] all False
+            t_en = self.model.text_encoder(tokens, input_lengths, m)  # [1,512,15]
+            key = self.keys[random_sid]  # '3118_5909_000012_000004'
+            ref, _ = self.ref_embeddings[key]  # [1,128]
+            s = ref.squeeze(1)  # [1,128]
             style = s  # [1,128]
 
             d = self.model.predictor.text_encoder(t_en, style, input_lengths,
-                                                  m)  # t_en [1,512,182] style s[1,128] input_lengths s[1]  d s[1,182,640]
+                                                  m)  # t_en [1,512,15] style s[1,128] input_lengths s[1] m s[1,15]  d s[1,15,640]
 
-            x, _ = self.model.predictor.lstm(d)  # x s[1,182,512]
-            duration = self.model.predictor.duration_proj(x)  # duration s[1,182,1]
-            pred_dur = torch.round(duration.squeeze()).clamp(min=1)  # pred_dur s[182]
+            x, _ = self.model.predictor.lstm(d)  # x s[1,15,512]
+            duration = self.model.predictor.duration_proj(x)  # duration s[1,15,1]
+            pred_dur = torch.round(duration.squeeze()).clamp(min=1)  # pred_dur s[15]
 
-            pred_aln_trg = torch.zeros(input_lengths, int(pred_dur.sum().data))  # pred_aln_trg s[182,405]
+            pred_aln_trg = torch.zeros(input_lengths, int(pred_dur.sum().data))  # pred_aln_trg s[input_lengths=15, int(pred_dur.sum()=63]
             c_frame = 0
             for i in range(pred_aln_trg.size(0)):
-                pred_aln_trg[i, c_frame:c_frame + int(pred_dur[i].data)] = 1
+                pred_aln_trg[i, c_frame:c_frame + int(pred_dur[i].data)] = 1  # monotonous align
                 c_frame += int(pred_dur[i].data)
                 # c_frame = 405
             # encode prosody
             en = (d.transpose(-1, -2) @ pred_aln_trg.unsqueeze(0).to(
-                self.device))  # d.transpose(-1, -2) [1,640,182]  pred_aln_trg.unsqueeze(0) [1,182,405]  en [1,640,405]
+                self.device))  # d.transpose(-1, -2) [1,640,15]  pred_aln_trg.unsqueeze(0) [1,15,63]  en [1,640,63]
             style = s.expand(en.shape[0], en.shape[1], -1)  # s [1,128] style [1,640,128]
 
             F0_pred, N_pred = self.model.predictor.F0Ntrain(en,
-                                                            s)  # en [1,640,405]  s[1,128]  F0_pred [1,810] N_pred [1,810]
+                                                            s)  # en [1,640,63]  s[1,128]  F0_pred [1,126] N_pred [1,126]
 
-            out = self.model.decoder((t_en @ pred_aln_trg.unsqueeze(0).to(self.device)),
-                                     F0_pred, N_pred, ref.squeeze().unsqueeze(0))  # out [1,80,810]
+            out = self.model.decoder((t_en @ pred_aln_trg.unsqueeze(0).to(self.device)),  # t_en [1, 512, 15]  pred_aln_trg [1, 15,63] > [1 ,512, 63]
+                                     F0_pred, N_pred, ref.squeeze().unsqueeze(0))  # ref.squeeze().unsqueeze(0) = [1,128] out [1,80,126]
 
-            c = out.squeeze()  # c [80,810]
-            y_g_hat = self.generator(c.unsqueeze(0))  # y_g_hat [1,1,243000]
+            c = out.squeeze()  # c [80,126]
+            y_g_hat = self.generator(c.unsqueeze(0))  # y_g_hat [1,1,37800]
             y_out = y_g_hat.squeeze().cpu().numpy()  # y_out s[1]
             hid = str(time.time()).replace(".", "")
             int_id = str(random.randint(1000, 2000))
